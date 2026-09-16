@@ -58,9 +58,12 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     private var soundOn = false
     private var shiftLock = false
     private var ctrlLock = false
+    private var altLock = false
     private var shift = false
     private var ctrl = false
+    private var alt = false
     private var mKeyboardState: Int = R.integer.keyboard_normal
+    private var isDevPage = false
     private var timerLongPress: Timer? = null
     private var mKeyboardUiFactory: KeyboardUiFactory? = null
     private var mCurrentKeyboardLayoutView: KeyboardLayoutView? = null
@@ -92,7 +95,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     mKeyboardState = R.integer.keyboard_normal
                 }
                 // regenerate view
-                //Simple remove shift
+                //Simple remove shift/ctrl/alt
                 if (shift) {
                     shift = false
                     shiftLock = false
@@ -103,42 +106,49 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     ctrlLock = false
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
                 }
+                if (alt) {
+                    alt = false
+                    altLock = false
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
+                }
+                // reset dev page on state change
+                isDevPage = false
                 setInputView(onCreateInputView())
                 controlKeyUpdateView()
                 shiftKeyUpdateView()
+                altKeyUpdateView()
             }
             17 -> {
                 //KEYCODE_CTRL_LEFT:
-                // emulates a press down of the ctrl key
                 if (!ctrlLock && !ctrl) {
-                    //Simple ctrl to true
                     ctrl = true
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
                 } else if (!ctrlLock && ctrl) {
-                    //Simple remove ctrl
                     ctrl = false
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
                 }
-                //else if (ctrl && ctrlLock) {
-                //Stay ctrled if previously ctrled
-                //}
                 controlKeyUpdateView()
+            }
+            -30 -> {
+                // KEYCODE_ALT_LEFT (use -30 to avoid colliding with '9' = 57)
+                if (!altLock && !alt) {
+                    alt = true
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT))
+                } else if (!altLock && alt) {
+                    alt = false
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
+                }
+                altKeyUpdateView()
             }
             16 -> {
                 //KEYCODE_SHIFT_LEFT
-                // emulates press of shift key - this helps for selection with arrow keys
                 if (!shiftLock && !shift) {
-                    //Simple shift to true
                     shift = true
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT))
                 } else if (!shiftLock && shift) {
-                    //Simple remove shift
                     shift = false
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT))
                 }
-                //else if (shift && shiftLock) {
-                //Stay shifted if previously shifted
-                //}
                 shiftKeyUpdateView()
             }
             else -> {
@@ -158,6 +168,14 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                         ctrl = false
                         ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
                         controlKeyUpdateView()
+                    }
+                }
+                if (alt) {
+                    meta = meta or KeyEvent.META_ALT_ON
+                    if (!altLock) {
+                        alt = false
+                        ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
+                        altKeyUpdateView()
                     }
                 }
                 //Now shift/ctrl metadata is set
@@ -329,6 +347,18 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
             controlKeyUpdateView()
         }
 
+        if (keyCode == -30) {
+            altLock = !altLock
+            if (altLock) {
+                alt = true
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT))
+            } else {
+                alt = false
+                ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
+            }
+            altKeyUpdateView()
+        }
+
         if (keyCode == 32) {
             longPressedSpaceButton = true
 
@@ -403,11 +433,18 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         try {
             val builder = KeyboardLayoutBuilder(this)
             builder.setBox(Box.create(0f, 0f, 1f, 1f))
+                .setPadding(0.012f)
+                .setRowGap(0.008f)
+                .setKeyGap(0.008f)
 
-            if (mToprow) {
-                definitions.addCopyPasteRow(builder)
-            } else {
-                definitions.addArrowsRow(builder)
+            // Clean GBoard: hide top dev row on normal page; dev keys are on swipe page instead
+            val showTopRow = !(mKeyboardState == R.integer.keyboard_normal && !isDevPage)
+            if (showTopRow) {
+                if (mToprow) {
+                    definitions.addCopyPasteRow(builder)
+                } else {
+                    definitions.addArrowsRow(builder)
+                }
             }
 
             if (mKeyboardState == R.integer.keyboard_sym) {
@@ -429,19 +466,21 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     definitions.addCustomSpaceRow(builder, mCustomSymbolsMainBottom)
                 }
             } else if (mKeyboardState == R.integer.keyboard_normal) {
-                if (mCustomSymbolsMain.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsMain)
+                if (isDevPage) {
+                    // Swipe left: show ONLY dev/special keys, no letters/numbers
+                    Definitions.addDevSpecialPage(builder, this)
+                } else {
+                    // Clean GBoard-like default: ALWAYS numbers + letters + clean bottom
+                    // Custom mains are hidden here on purpose for clean look (still on SYM page)
+                    Definitions.addGboardNumbersRow(builder)
+                    when (mLayout) {
+                        1 -> Definitions.addAzertyRows(builder)
+                        2 -> Definitions.addDvorakRows(builder)
+                        3 -> Definitions.addQwertzRows(builder)
+                        else -> Definitions.addQwertyRows(builder)
+                    }
+                    definitions.addGboardBottomRow(builder)
                 }
-                if (mCustomSymbolsMain2.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsMain2)
-                }
-                when (mLayout) {
-                    1 -> Definitions.addAzertyRows(builder)
-                    2 -> Definitions.addDvorakRows(builder)
-                    3 -> Definitions.addQwertzRows(builder)
-                    else -> Definitions.addQwertyRows(builder)
-                }
-                definitions.addCustomSpaceRow(builder, mCustomSymbolsMainBottom)
             } else if (mKeyboardState == R.integer.keyboard_clipboard) {
                 definitions.addClipboardActions(builder)
 
@@ -470,6 +509,21 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
 
             val keyboardLayout = builder.build()
             mCurrentKeyboardLayoutView = mKeyboardUiFactory!!.createKeyboardView(this, keyboardLayout)
+            // Wire swipe: left = dev page (only specials), right = clean GBoard
+            mCurrentKeyboardLayoutView?.let { view ->
+                view.onSwipeLeft = {
+                    if (mKeyboardState == R.integer.keyboard_normal && !isDevPage) {
+                        isDevPage = true
+                        setInputView(onCreateInputView())
+                    }
+                }
+                view.onSwipeRight = {
+                    if (isDevPage) {
+                        isDevPage = false
+                        setInputView(onCreateInputView())
+                    }
+                }
+            }
             return mCurrentKeyboardLayoutView
 
         } catch (e: KeyboardLayoutException) {
@@ -498,6 +552,13 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     fun shiftKeyUpdateView() {
         mCurrentKeyboardLayoutView?.applyShiftModifier(shift)
     }
+
+    fun altKeyUpdateView() {
+        // Alt has no visual label swap yet, but keep for future
+        mCurrentKeyboardLayoutView?.applyCtrlModifier(ctrl)
+    }
+
+    fun isOnDevPage(): Boolean = isDevPage
 
     private fun clearLongPressTimer() {
         if (timerLongPress != null) {

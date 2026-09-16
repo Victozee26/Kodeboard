@@ -2,6 +2,7 @@ package com.victozee.kodeboard.layout.ui
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.KeyboardView
 import android.view.MotionEvent
@@ -65,44 +66,80 @@ class KeyboardButtonView(
     }
 
     private fun drawButtonContent(canvas: Canvas) {
+        val fg = uiTheme.getForegroundForKey(key.info.code)
+        // use a copy so we don't mutate shared paint
+        val textPaint = Paint(uiTheme.foregroundPaint).apply {
+            color = fg
+            // Shift glyph needs to be bigger to match GBoard arrow
+            if (key.info.code == 16) {
+                textSize = uiTheme.fontHeight * 1.6f
+            }
+        }
         currentLabel?.let { label ->
-            val x = width / 2f
-            val y = height / 2f + uiTheme.fontHeight / 3f
-            canvas.drawText(label, x, y, uiTheme.foregroundPaint)
+            if (label.isNotEmpty()) {
+                val x = width / 2f
+                // center using font metrics, lift comma/dot slightly
+                val yOffset = when (label) {
+                    ",", "." -> uiTheme.fontHeight / 4f
+                    else -> uiTheme.fontHeight / 3f
+                }
+                val xOffset = when (label) {
+                    "?123" -> -2f
+                    else -> 0f
+                }
+                val y = height / 2f + yOffset
+                canvas.drawText(label, x + xOffset, y, textPaint)
+            }
         }
 
         val icon: Drawable? = key.info.icon
         if (icon != null) {
             val d: Drawable = icon
-            d.setTint(uiTheme.foregroundPaint.color)
-            val padding = uiTheme.buttonBodyPadding.toInt() * 2
-            val top: Int
-            val left: Int
-            val squareSize: Int
-            if (width > height) {
-                top = 2 * padding
-                squareSize = height / 2 - top
-                left = width / 2 - squareSize
-            } else {
-                left = 2 * padding
-                squareSize = width / 2 - left
-                top = height / 2 - squareSize
+            d.setTint(fg)
+            // GBoard: icon ~45% of key height, centered, never touches edges
+            val iconH = height * 0.45f
+            val iconW = (width * 0.6f).coerceAtMost(iconH * 1.4f)
+            val halfW = iconW / 2f
+            val halfH = iconH / 2f
+            val cx = width / 2f
+            val cy = height / 2f
+            val left = (cx - halfW).toInt()
+            val top = (cy - halfH).toInt()
+            val right = (cx + halfW).toInt()
+            val bottom = (cy + halfH).toInt()
+            if (right > left && bottom > top) {
+                d.setBounds(left, top, right, bottom)
+                d.draw(canvas)
             }
-            val right = left + squareSize * 2
-            val bottom = top + squareSize * 2
-            d.setBounds(left, top, right, bottom)
-            d.draw(canvas)
         }
     }
 
     private fun drawButtonBody(canvas: Canvas) {
-        val left = uiTheme.buttonBodyPadding
-        val top = uiTheme.buttonBodyPadding
-        val right = width - uiTheme.buttonBodyPadding
-        val bottom = height - uiTheme.buttonBodyPadding
-        val rx = uiTheme.buttonBodyBorderRadius
-        val ry = uiTheme.buttonBodyBorderRadius
-        canvas.drawRoundRect(left, top, right, bottom, rx, ry, uiTheme.buttonBodyPaint)
+        val padH = uiTheme.buttonBodyPadding
+        val padV = uiTheme.buttonBodyPaddingVertical
+        val left = padH
+        val top = padV
+        val right = width - padH
+        val bottom = height - padV
+        // GBoard: letters rounded-rect, wide keys full pill
+        val isWide = width > height * 1.5f
+        val rx: Float
+        val ry: Float
+        if (isWide) {
+            // full pill for space/?123/enter
+            rx = (bottom - top) / 2f * 0.9f
+            ry = rx
+        } else {
+            rx = uiTheme.buttonBodyBorderRadius
+            ry = rx
+        }
+        val paint = Paint(uiTheme.buttonBodyPaint).apply {
+            color = uiTheme.getKeyColor(key.info.code, key.info.isModifier)
+            isAntiAlias = true
+        }
+        if (right > left && bottom > top) {
+            canvas.drawRoundRect(left, top, right, bottom, rx, ry, paint)
+        }
     }
 
     private fun onPress() {
@@ -179,7 +216,8 @@ class KeyboardButtonView(
             scaleY = 1.0f
             elevation = 0.0f
         } else {
-            animate().alpha(1.0f).setDuration(400)
+            // reset immediately to avoid stuck translucent state in screenshots
+            alpha = 1.0f
         }
     }
 

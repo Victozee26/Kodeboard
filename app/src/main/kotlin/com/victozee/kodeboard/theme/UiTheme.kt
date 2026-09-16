@@ -11,18 +11,45 @@ class UiTheme private constructor() {
     var backgroundColor: Int
     var fontHeight: Float = 0f
 
-    var buttonBodyPadding: Float = 5.0f
+    var buttonBodyPadding: Float = 7f
+    var buttonBodyPaddingVertical: Float = 16f
     var buttonBodyPaint: Paint
-    var buttonBodyBorderRadius: Float = 8.0f
+    var buttonBodyBorderRadius: Float = 14.0f
     var enablePreview: Boolean = false
     var enableBorder: Boolean = false
     var portraitSize: Float = 0f
     var landscapeSize: Float = 0f
 
+    // GBoard-like palette
+    var keyNormalColor: Int = 0xFF3C4043.toInt()
+    var keyFunctionalColor: Int = 0xFF2D2E30.toInt()
+    var keyEnterColor: Int = 0xFF8AB4F8.toInt()
+    var keyEnterForeground: Int = 0xFF202124.toInt()
+
     init {
         foregroundPaint = Paint()
         buttonBodyPaint = Paint()
         backgroundColor = 0xFF000000.toInt()
+    }
+
+    fun getKeyColor(code: Int, isModifier: Boolean): Int {
+        return when (code) {
+            -4 -> keyEnterColor // Enter blue
+            16, 17, -30, 9, -2, -1 -> keyFunctionalColor // Shift, Ctrl, Alt(-30), Tab, Esc, SYM (?123)
+            -5 -> keyFunctionalColor // Backspace
+            44, 46 -> keyFunctionalColor // , . GBoard dark like ?123
+            53737, 53738, 53739, 53740, 53741, 53742 -> keyFunctionalColor
+            else -> {
+                // F-keys, arrows, navigation are functional
+                if (code in -23..-6 || code in 5000..5003) keyFunctionalColor
+                else if (isModifier) keyFunctionalColor
+                else keyNormalColor
+            }
+        }
+    }
+
+    fun getForegroundForKey(code: Int): Int {
+        return if (code == -4) keyEnterForeground else foregroundPaint.color
     }
 
     companion object {
@@ -38,13 +65,33 @@ class UiTheme private constructor() {
             } else {
                 theme.backgroundColor = info.backgroundColor
             }
-            theme.buttonBodyPaint.color = info.backgroundColor
+            // GBoard-like: background pure black or dark, keys slightly lighter
+            // Keep background as theme background, but derive key colors
+            val isDark = ColorUtils.calculateLuminance(info.backgroundColor) < 0.5
+            if (isDark) {
+                theme.keyNormalColor = 0xFF3C4043.toInt()
+                theme.keyFunctionalColor = 0xFF202124.toInt()
+                theme.keyEnterColor = 0xFF8AB4F8.toInt()
+                theme.keyEnterForeground = 0xFFFFFFFF.toInt()
+                // GBoard dark background is pure black
+                theme.backgroundColor = 0xFF000000.toInt()
+            } else {
+                theme.keyNormalColor = 0xFFFFFFFF.toInt()
+                theme.keyFunctionalColor = 0xFFE8EAED.toInt()
+                theme.keyEnterColor = 0xFF1A73E8.toInt()
+                theme.keyEnterForeground = 0xFFFFFFFF.toInt()
+            }
+            theme.buttonBodyPaint.color = theme.keyNormalColor
             theme.foregroundPaint.color = info.foregroundColor
-            theme.fontHeight = info.fontSize
+            theme.fontHeight = info.fontSize * 0.95f
             theme.foregroundPaint.textSize = theme.fontHeight
             theme.foregroundPaint.textAlign = Paint.Align.CENTER
             theme.foregroundPaint.isAntiAlias = true
             theme.foregroundPaint.typeface = Typeface.DEFAULT
+            // GBoard sizing - short wide keys: small gutters for 26% height board
+            theme.buttonBodyPadding = 5f
+            theme.buttonBodyPaddingVertical = 6f
+            theme.buttonBodyBorderRadius = 10.0f
             return theme
         }
     }

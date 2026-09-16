@@ -152,12 +152,12 @@ class KeyboardLayoutBuilder(private val context: Context) {
     }
 
     fun addShiftKey(): KeyboardLayoutBuilder {
-        return addKey("Shft", 16).asModifier()
-            .onShiftShow("SHFT").withSize(1.5f)
+        return addKey("⇧", 16).asModifier()
+            .onShiftShow("⇧").withSize(1.5f)
     }
 
     fun addBackspaceKey(): KeyboardLayoutBuilder {
-        return addKey(context.getDrawable(R.drawable.ic_backspace_24dp), -5).asRepeatable()
+        return addKey(context.getDrawable(R.drawable.ic_backspace_24dp), -5).asRepeatable().withSize(1.5f)
     }
 
     fun addEnterKey(): KeyboardLayoutBuilder {

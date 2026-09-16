@@ -11,8 +11,8 @@
     <bool name="notification">false</bool>
     <integer name="theme">1</integer>
     <integer name="vibrate_length">1</integer>
-    <integer name="size_portrait">40</integer>
-    <integer name="size_landscape">70</integer>
+    <integer name="size_portrait">26</integer>
+    <integer name="size_landscape">44</integer>
     <integer name="bg_color">0xff263238</integer>
     <integer name="fg_color">0xffffffff</integer>
     <integer name="font_size">20</integer>
