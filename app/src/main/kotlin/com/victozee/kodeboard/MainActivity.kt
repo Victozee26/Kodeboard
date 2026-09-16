@@ -17,8 +17,6 @@ class MainActivity : AppCompatActivity() {
             .beginTransaction()
             .replace(R.id.settings_container, frag)
             .commit()
-        //debug only
-        //        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

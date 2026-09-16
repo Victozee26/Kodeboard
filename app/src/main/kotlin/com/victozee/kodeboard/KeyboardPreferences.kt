@@ -28,10 +28,6 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         return read("sound", res.getBoolean(R.bool.sound))
     }
 
-    fun setSoundEnabled(bool: Boolean) {
-        write("sound", bool)
-    }
-
     fun isVibrateEnabled(): Boolean {
         return try {
             read("vibrate", res.getBoolean(R.bool.vibrate))
@@ -46,10 +42,6 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         } catch (e: Exception) {
             1
         }
-    }
-
-    fun setVibrateLength(length: Int) {
-        write("vibrate_ms", length.toString())
     }
 
     fun getBgColor(): Int {
@@ -102,28 +94,12 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         return read("input_symbols_main", res.getString(R.string.input_symbols_main)) ?: res.getString(R.string.input_symbols_main)
     }
 
-    fun setCustomSymbolsMain(symbols: String) {
-        write("input_symbols_main", symbols)
-    }
-
     fun getCustomSymbolsMain2(): String {
         return read("input_symbols_main_2", res.getString(R.string.input_symbols_main_2)) ?: res.getString(R.string.input_symbols_main_2)
     }
 
-    fun setCustomSymbolsMain2(symbols: String) {
-        write("input_symbols_main_2", symbols)
-    }
-
     fun getCustomSymbolsMainBottom(): String {
         return read("input_symbols_main_bottom", res.getString(R.string.input_symbols_main_bottom)) ?: res.getString(R.string.input_symbols_main_bottom)
-    }
-
-    fun setCustomSymbolsMainBottom(symbols: String) {
-        write("input_symbols_main_bottom", symbols)
-    }
-
-    fun setCustomSymbolsSymBottom(symbols: String) {
-        write("input_symbols_sym_bottom", symbols)
     }
 
     fun getNavBar(): Boolean {
@@ -182,13 +158,6 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         return read("top_row_actions", res.getBoolean(R.bool.top_row_actions))
     }
 
-    fun resetAllToDefault() {
-        val editor = preferences.edit()
-        editor.clear()
-        editor.apply()
-        setFirstStart(false)
-    }
-
     private fun read(key: String, defaultValue: Boolean): Boolean {
         return preferences.getBoolean(key, defaultValue)
     }
@@ -197,10 +166,6 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         val editor = preferences.edit()
         editor.putBoolean(key, value)
         editor.apply()
-    }
-
-    private fun read(key: String, defaultValue: Int): Int {
-        return preferences.getInt(key, defaultValue)
     }
 
     private fun read(key: String, defaultValue: String): String? {

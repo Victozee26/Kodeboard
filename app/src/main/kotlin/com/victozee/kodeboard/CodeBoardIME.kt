@@ -24,7 +24,6 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -32,7 +31,6 @@ import androidx.core.app.RemoteInput
 import androidx.core.graphics.ColorUtils
 import com.victozee.kodeboard.layout.Box
 import com.victozee.kodeboard.layout.Definitions
-import com.victozee.kodeboard.layout.Key
 import com.victozee.kodeboard.layout.builder.KeyboardLayoutBuilder
 import com.victozee.kodeboard.layout.builder.KeyboardLayoutException
 import com.victozee.kodeboard.layout.ui.KeyboardLayoutView
@@ -43,16 +41,14 @@ import java.util.Objects
 import java.util.Timer
 import java.util.TimerTask
 import android.content.ClipDescription.MIMETYPE_TEXT_PLAIN
-import android.view.inputmethod.InputMethodManager.HIDE_IMPLICIT_ONLY
 
 class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener {
 
     companion object {
-        private const val NOTIFICATION_CHANNEL_ID = "Codeboard"
+        private const val NOTIFICATION_CHANNEL_ID = "Kodeboard"
         private const val NOTIFICATION_ONGOING_ID = 1001
     }
 
-    var sEditorInfo: EditorInfo? = null
     private var vibratorOn = false
     private var vibrateLength = 0
     private var soundOn = false
@@ -378,11 +374,9 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     }
 
     override fun requestHideSelf(flags: Int) {
-        var newFlag = HIDE_IMPLICIT_ONLY
-        newFlag = flags
-        Log.d(javaClass.simpleName, "requestHideSelf: $newFlag,$flags")
+        Log.d(javaClass.simpleName, "requestHideSelf: $flags,$flags")
         // do nothing
-        super.requestHideSelf(newFlag)
+        super.requestHideSelf(flags)
     }
 
     override fun onWindowHidden() {
@@ -522,9 +516,6 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         }
         //Key Layout
         val mToprow = sharedPreferences.getTopRowActions()
-        val mCustomSymbolsMain = sharedPreferences.getCustomSymbolsMain()
-        val mCustomSymbolsMain2 = sharedPreferences.getCustomSymbolsMain2()
-        val mCustomSymbolsMainBottom = sharedPreferences.getCustomSymbolsMainBottom()
         val mLayout = sharedPreferences.getLayoutIndex()
 
         //Need this to get resources for drawables
@@ -639,7 +630,6 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         }
         setInputView(onCreateInputView())
         fnKeyUpdateView()
-        sEditorInfo = attribute
     }
 
     fun controlKeyUpdateView() {
@@ -662,8 +652,6 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         mCurrentKeyboardLayoutView?.setModifierActive(-31, fn)
         mCurrentKeyboardLayoutView?.applyFnModifier(fn)
     }
-
-    fun isOnDevPage(): Boolean = isDevPage
 
     private fun restoreModifiersAfterSteal() {
         // A swipe starting on a non-modifier key fires that key's DOWN via the
@@ -857,7 +845,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
 
             // Create the reply action and add the remote input.
             val action = NotificationCompat.Action.Builder(
-                R.drawable.icon_large,
+                R.mipmap.ic_launcher_round,
                 getString(R.string.notification_action_open_keyboard_workaround), replyPendingIntent
             )
                 .addRemoteInput(remoteInput)
@@ -869,11 +857,11 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 this, 0,
                 settingsIntent, PendingIntent.FLAG_IMMUTABLE
             )
-            val title = "Show Codeboard Keyboard"
+            val title = "Show Kodeboard Keyboard"
             val body = "Select this to open the keyboard. Disable in settings. You may have to fix open the fix as a workaround for newer Android versions"
 
             val mBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.icon_large)
+                .setSmallIcon(R.mipmap.ic_launcher_round)
                 .setColor(0xff220044.toInt())
                 .setAutoCancel(false)
                 .setTicker(text)
@@ -882,11 +870,11 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 .setContentIntent(imePendingIntent)
                 .setOngoing(true)
                 .addAction(
-                    R.drawable.icon_large, getString(R.string.notification_action_open_keyboard),
+                    R.mipmap.ic_launcher_round, getString(R.string.notification_action_open_keyboard),
                     imePendingIntent
                 )
                 .addAction(
-                    R.drawable.icon_large, getString(R.string.notification_action_settings),
+                    R.mipmap.ic_launcher_round, getString(R.string.notification_action_settings),
                     settingsPendingIntent
                 )
                 .addAction(action)

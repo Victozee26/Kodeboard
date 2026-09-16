@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:textColor="@android:color/background_light"
-        android:text="Next, choose CodeBoard as your keyboard"/>
+        android:text="Next, choose Kodeboard as your keyboard"/>
 
         <Button
             android:id="@+id/change_button_intro"
@@ -24,13 +24,13 @@
             android:onClick="changeButtonIntro"
             />
 
-    <ImageView
+    <TextView
         android:layout_height="wrap_content"
         android:layout_width="match_parent"
-        android:adjustViewBounds="true"
-        android:layout_gravity="center_horizontal"
-        android:scaleType="centerInside"
-        android:src="@drawable/icon_large"
-        android:layout_marginBottom="64dp"/>
+        android:layout_margin="24dp"
+        android:padding="16dp"
+        android:text="After tapping the button above:\n\n1. Select Kodeboard in the dialog\n2. Open any text field to start typing"
+        android:textColor="@android:color/background_light"
+        android:textSize="16sp" />
 
 </LinearLayout>

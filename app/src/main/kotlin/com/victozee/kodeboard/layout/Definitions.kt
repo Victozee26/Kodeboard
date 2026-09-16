@@ -57,13 +57,6 @@ class Definitions(private val context: Context) {
         private const val CODE_SYMBOLS = -1
 
         @JvmStatic
-        fun addCustomRow(keyboard: KeyboardLayoutBuilder, symbols: String) {
-            keyboard.newRow()
-            val chars = symbols.toCharArray()
-            for (aChar in chars) keyboard.addKey(aChar)
-        }
-
-        @JvmStatic
         fun addGboardNumbersRow(keyboard: KeyboardLayoutBuilder) {
             keyboard.newRow()
                 .addKey('1').onFnShow("F1").withSize(1f)

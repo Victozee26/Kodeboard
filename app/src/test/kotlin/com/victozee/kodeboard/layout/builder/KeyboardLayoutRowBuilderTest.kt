@@ -8,11 +8,11 @@ import java.util.ArrayList
 
 class KeyboardLayoutRowBuilderTest {
 
-    private val defaultBox = Box.create(0, 0, 100, 10)
+    private val defaultBox = Box.create(0f, 0f, 100f, 10f)
 
     @Test
     fun setBox_doesNotThrow() {
-        builder().setBox(Box.create(0, 600, 320, 32))
+        builder().setBox(Box.create(0f, 600f, 320f, 32f))
     }
 
     @Test
@@ -30,23 +30,23 @@ class KeyboardLayoutRowBuilderTest {
     @Throws(KeyboardLayoutException::class)
     fun build_proportinallySplitsAvaiableWidth() {
         val result = buildTwoKeysRow()
-        assertEquals(result[0].box.width, 25.0, 0.01)
-        assertEquals(result[1].box.width, 75.0, 0.01)
+        assertEquals(result[0].box.width.toDouble(), 25.0, 0.01)
+        assertEquals(result[1].box.width.toDouble(), 75.0, 0.01)
     }
 
     @Test
     @Throws(KeyboardLayoutException::class)
     fun build_usesAllAvaiableHeight() {
         val result = buildTwoKeysRow()
-        assertEquals(result[0].box.height, 10.0, 0.01)
+        assertEquals(result[0].box.height.toDouble(), 10.0, 0.01)
     }
 
     @Test
     @Throws(KeyboardLayoutException::class)
     fun build_addsGapBetweenKeys() {
         val result = buildTwoKeysRow(20f)
-        assertEquals(result[0].box.width, 20.0, 0.01)
-        assertEquals(result[1].box.width, 60.0, 0.01)
+        assertEquals(result[0].box.width.toDouble(), 20.0, 0.01)
+        assertEquals(result[1].box.width.toDouble(), 60.0, 0.01)
     }
 
     private fun builder(): KeyboardLayoutRowBuilder {
@@ -61,9 +61,9 @@ class KeyboardLayoutRowBuilderTest {
     @Throws(KeyboardLayoutException::class)
     private fun buildTwoKeysRow(gap: Float): ArrayList<Key> {
         val keyA = KeyInfo()
-        keyA.size = 1
+        keyA.size = 1f
         val keyB = KeyInfo()
-        keyB.size = 3
+        keyB.size = 3f
         return builder().setBox(defaultBox)
             .setGap(gap)
             .addKey(keyA).addKey(keyB).build()

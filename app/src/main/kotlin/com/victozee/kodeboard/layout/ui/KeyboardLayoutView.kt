@@ -120,11 +120,6 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
             val child = getChildAt(i)
             if (child is KeyboardButtonView) {
                 child.releaseIfPressed()
-            } else if (child is ViewGroup) {
-                for (j in 0 until child.childCount) {
-                    val grand = child.getChildAt(j)
-                    if (grand is KeyboardButtonView) grand.releaseIfPressed()
-                }
             }
         }
     }

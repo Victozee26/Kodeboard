@@ -6,8 +6,6 @@ class Box {
     var width: Float = 0f
     var height: Float = 0f
 
-    fun getArea(): Float = width * height
-
     fun getLeft(): Float = x
 
     fun getRight(): Float = x + width

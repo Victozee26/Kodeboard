@@ -245,18 +245,6 @@ class KeyboardButtonView(
         }
     }
 
-    private fun animateRelease() {
-        if (uiTheme.enablePreview) {
-            translationY = 0.0f
-            scaleX = 1.0f
-            scaleY = 1.0f
-            elevation = 0.0f
-        } else {
-            // reset immediately to avoid stuck translucent state in screenshots
-            alpha = 1.0f
-        }
-    }
-
     fun applyShiftModifier(shiftPressed: Boolean) {
         val onShiftLabel = key.info.onShiftLabel
         if (onShiftLabel != null) {

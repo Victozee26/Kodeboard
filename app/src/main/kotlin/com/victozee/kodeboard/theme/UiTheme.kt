@@ -16,7 +16,6 @@ class UiTheme private constructor() {
     var buttonBodyPaint: Paint
     var buttonBodyBorderRadius: Float = 14.0f
     var enablePreview: Boolean = false
-    var enableBorder: Boolean = false
     var portraitSize: Float = 0f
     var landscapeSize: Float = 0f
 
@@ -67,7 +66,6 @@ class UiTheme private constructor() {
             theme.portraitSize = info.size
             theme.landscapeSize = info.sizeLandscape
             theme.enablePreview = info.enablePreview
-            theme.enableBorder = info.enableBorder
             if (info.enableBorder) {
                 theme.backgroundColor = ColorUtils.blendARGB(info.backgroundColor, Color.BLACK, 0.2f)
             } else {

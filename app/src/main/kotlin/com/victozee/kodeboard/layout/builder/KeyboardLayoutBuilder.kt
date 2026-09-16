@@ -88,11 +88,6 @@ class KeyboardLayoutBuilder(private val context: Context) {
         return this
     }
 
-    fun withCode(code: Int): KeyboardLayoutBuilder {
-        currentKey!!.code = code
-        return this
-    }
-
     fun withIcon(icon: Drawable?): KeyboardLayoutBuilder {
         currentKey!!.icon = icon
         return this

@@ -10,7 +10,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="48dp"
-        android:text="First, enable CodeBoard"
+        android:text="First, enable Kodeboard"
         android:textColor="@android:color/background_light"
         android:textSize="20sp"
         android:textStyle="bold" />
@@ -24,23 +24,12 @@
         android:onClick="enableButtonIntro"
         android:text="Enable Keyboard" />
     <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="48dp"
-        android:text="You should see this:"
-        android:textColor="@android:color/background_light"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-    <ImageView
-        android:layout_height="wrap_content"
         android:layout_width="match_parent"
-        android:adjustViewBounds="true"
-        android:layout_centerInParent="true"
-        android:layout_gravity="center_horizontal"
-        android:scaleType="centerInside"
-        android:padding="20dp"
-        android:layout_marginBottom="64dp"
-        android:src="@drawable/enable_screenshot" />
+        android:layout_height="wrap_content"
+        android:layout_margin="24dp"
+        android:padding="16dp"
+        android:text="After tapping the button above:\n\n1. Find Kodeboard in the list\n2. Turn the switch ON\n3. Tap OK to confirm"
+        android:textColor="@android:color/background_light"
+        android:textSize="16sp" />
 
 </LinearLayout>
