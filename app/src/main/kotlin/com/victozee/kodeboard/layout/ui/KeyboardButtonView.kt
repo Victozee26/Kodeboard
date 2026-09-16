@@ -34,6 +34,7 @@ class KeyboardButtonView(
         when (e.action) {
             MotionEvent.ACTION_DOWN -> onPress()
             MotionEvent.ACTION_UP -> onRelease()
+            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> releaseIfPressed()
         }
         return true
     }
@@ -153,14 +154,7 @@ class KeyboardButtonView(
     }
 
     private fun onRelease() {
-        isPressed = false
-        if (key.info.code != 0) {
-            inputService.onRelease(key.info.code)
-        }
-        if (key.info.isRepeatable) {
-            stopRepeating()
-        }
-        animateRelease()
+        releaseIfPressed()
     }
 
     private fun submitKeyEvent() {
@@ -174,8 +168,28 @@ class KeyboardButtonView(
     }
 
     private fun autoReleaseIfPressed() {
-        if (isPressed) {
-            onRelease()
+        releaseIfPressed()
+    }
+
+    fun releaseIfPressed() {
+        val wasPressed = isPressed
+        isPressed = false
+        try {
+            timer?.cancel()
+        } catch (_: Exception) {
+        }
+        timer = null
+        // Reset visuals unconditionally so a stuck key can never stay dim/lifted.
+        alpha = 1.0f
+        translationY = 0.0f
+        scaleX = 1.0f
+        scaleY = 1.0f
+        elevation = 0.0f
+        if (wasPressed && key.info.code != 0) {
+            try {
+                inputService.onRelease(key.info.code)
+            } catch (_: Exception) {
+            }
         }
     }
 

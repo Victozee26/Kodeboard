@@ -64,6 +64,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     private var alt = false
     private var mKeyboardState: Int = R.integer.keyboard_normal
     private var isDevPage = false
+    private var lastPageSwitchTime = 0L
     private var timerLongPress: Timer? = null
     private var mKeyboardUiFactory: KeyboardUiFactory? = null
     private var mCurrentKeyboardLayoutView: KeyboardLayoutView? = null
@@ -513,14 +514,12 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
             mCurrentKeyboardLayoutView?.let { view ->
                 view.onSwipeLeft = {
                     if (mKeyboardState == R.integer.keyboard_normal && !isDevPage) {
-                        isDevPage = true
-                        setInputView(onCreateInputView())
+                        switchKeyboardPage(true)
                     }
                 }
                 view.onSwipeRight = {
                     if (isDevPage) {
-                        isDevPage = false
-                        setInputView(onCreateInputView())
+                        switchKeyboardPage(false)
                     }
                 }
             }
@@ -559,6 +558,74 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     }
 
     fun isOnDevPage(): Boolean = isDevPage
+
+    private fun switchKeyboardPage(toDevPage: Boolean) {
+        try {
+            // No-op when already on target page; debounce rapid double-triggers.
+            if (isDevPage == toDevPage) return
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - lastPageSwitchTime < 300) return
+            lastPageSwitchTime = now
+            // Release any stuck keys + cancel pending long-press before tearing down the view.
+            try {
+                mCurrentKeyboardLayoutView?.releaseAllPressed()
+            } catch (_: Exception) {
+            }
+            clearLongPressTimer()
+            // Release momentary modifiers so they can't stick across the rebuild.
+            try {
+                val ic = currentInputConnection
+                if (shift && !shiftLock) {
+                    shift = false
+                    try {
+                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT))
+                    } catch (_: Exception) {
+                    }
+                }
+                if (ctrl && !ctrlLock) {
+                    ctrl = false
+                    try {
+                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
+                    } catch (_: Exception) {
+                    }
+                }
+                if (alt && !altLock) {
+                    alt = false
+                    try {
+                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
+                    } catch (_: Exception) {
+                    }
+                }
+            } catch (_: Exception) {
+            }
+            isDevPage = toDevPage
+            val rebuild = {
+                try {
+                    val v = onCreateInputView()
+                    if (v != null) setInputView(v)
+                } catch (e: Exception) {
+                    Log.e(javaClass.simpleName, "switchKeyboardPage: " + e.message, e)
+                }
+                try {
+                    controlKeyUpdateView()
+                    shiftKeyUpdateView()
+                    altKeyUpdateView()
+                } catch (_: Exception) {
+                }
+            }
+            if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+                rebuild()
+            } else {
+                try {
+                    mCurrentKeyboardLayoutView?.post { rebuild() }
+                } catch (e: Exception) {
+                    Log.e(javaClass.simpleName, "switchKeyboardPage post: " + e.message, e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(javaClass.simpleName, "switchKeyboardPage: " + e.message, e)
+        }
+    }
 
     private fun clearLongPressTimer() {
         if (timerLongPress != null) {

@@ -32,12 +32,16 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
                 val dy = ev.y - downY
                 if (!isScrolling && kotlin.math.abs(dx) > 80 && kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.5f) {
                     isScrolling = true
+                    // Parent steals the gesture: child that got ACTION_DOWN will only
+                    // get ACTION_CANCEL, so release it now to avoid stuck pressed state.
+                    releaseAllPressed()
                     return true
                 }
             }
             android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
                 if (isScrolling) {
                     val dx = ev.x - downX
+                    releaseAllPressed()
                     if (kotlin.math.abs(dx) > 120) {
                         if (dx < 0) onSwipeLeft?.invoke() else onSwipeRight?.invoke()
                     }
@@ -53,6 +57,7 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
         if (isScrolling) {
             if (event.action == android.view.MotionEvent.ACTION_UP || event.action == android.view.MotionEvent.ACTION_CANCEL) {
                 val dx = event.x - downX
+                releaseAllPressed()
                 if (kotlin.math.abs(dx) > 120) {
                     if (dx < 0) onSwipeLeft?.invoke() else onSwipeRight?.invoke()
                 }
@@ -88,6 +93,20 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
     fun applyCtrlModifier(ctrlPressed: Boolean) {
         for (button in getKeyboardButtons()) {
             button.applyCtrlModifier(ctrlPressed)
+        }
+    }
+
+    fun releaseAllPressed() {
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (child is KeyboardButtonView) {
+                child.releaseIfPressed()
+            } else if (child is ViewGroup) {
+                for (j in 0 until child.childCount) {
+                    val grand = child.getChildAt(j)
+                    if (grand is KeyboardButtonView) grand.releaseIfPressed()
+                }
+            }
         }
     }
 
