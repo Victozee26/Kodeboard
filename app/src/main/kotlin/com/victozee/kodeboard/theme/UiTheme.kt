@@ -25,6 +25,10 @@ class UiTheme private constructor() {
     var keyFunctionalColor: Int = 0xFF2D2E30.toInt()
     var keyEnterColor: Int = 0xFF8AB4F8.toInt()
     var keyEnterForeground: Int = 0xFF202124.toInt()
+    var keyActiveColor: Int = 0xFF80868B.toInt()
+
+    // Codes of armed modifiers (shift/ctrl/alt/fn) shown brighter while active
+    var activeCodes: MutableSet<Int> = mutableSetOf()
 
     init {
         foregroundPaint = Paint()
@@ -33,9 +37,13 @@ class UiTheme private constructor() {
     }
 
     fun getKeyColor(code: Int, isModifier: Boolean): Int {
+        // Armed modifiers glow brighter while active
+        if (code != -4 && activeCodes.contains(code)) {
+            return keyActiveColor
+        }
         return when (code) {
             -4 -> keyEnterColor // Enter blue
-            16, 17, -30, 9, -2, -1 -> keyFunctionalColor // Shift, Ctrl, Alt(-30), Tab, Esc, SYM (?123)
+            16, 17, -30, -31, 9, -2, -1 -> keyFunctionalColor // Shift, Ctrl, Alt(-30), Fn(-31), Tab, Esc, SYM (?123)
             -5 -> keyFunctionalColor // Backspace
             44, 46 -> keyFunctionalColor // , . GBoard dark like ?123
             53737, 53738, 53739, 53740, 53741, 53742 -> keyFunctionalColor
@@ -73,6 +81,7 @@ class UiTheme private constructor() {
                 theme.keyFunctionalColor = 0xFF202124.toInt()
                 theme.keyEnterColor = 0xFF8AB4F8.toInt()
                 theme.keyEnterForeground = 0xFFFFFFFF.toInt()
+                theme.keyActiveColor = 0xFF80868B.toInt()
                 // GBoard dark background is pure black
                 theme.backgroundColor = 0xFF000000.toInt()
             } else {
@@ -80,6 +89,7 @@ class UiTheme private constructor() {
                 theme.keyFunctionalColor = 0xFFE8EAED.toInt()
                 theme.keyEnterColor = 0xFF1A73E8.toInt()
                 theme.keyEnterForeground = 0xFFFFFFFF.toInt()
+                theme.keyActiveColor = 0xFFBDC1C6.toInt()
             }
             theme.buttonBodyPaint.color = theme.keyNormalColor
             theme.foregroundPaint.color = info.foregroundColor

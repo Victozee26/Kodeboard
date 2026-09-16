@@ -59,13 +59,25 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     private var shiftLock = false
     private var ctrlLock = false
     private var altLock = false
+    private var fnLock = false
     private var shift = false
     private var ctrl = false
     private var alt = false
+    private var fn = false
     private var mKeyboardState: Int = R.integer.keyboard_normal
     private var isDevPage = false
     private var lastPageSwitchTime = 0L
+    // Snapshot of armed modifiers at the last DOWN (onPress). Used to restore
+    // momentary modifiers killed by a swipe-start key's DOWN before the steal.
+    private var downSnapShift = false
+    private var downSnapCtrl = false
+    private var downSnapAlt = false
+    private var downSnapFn = false
+    private var downSnapTime = 0L
     private var timerLongPress: Timer? = null
+    // Set when a modifier long-press lock toggles while the finger is still down,
+    // so the deferred UP tap does not toggle the same modifier a second time.
+    private var modifierLongPressFired: Int = 0
     private var mKeyboardUiFactory: KeyboardUiFactory? = null
     private var mCurrentKeyboardLayoutView: KeyboardLayoutView? = null
     private var longPressedSpaceButton = false
@@ -96,7 +108,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     mKeyboardState = R.integer.keyboard_normal
                 }
                 // regenerate view
-                //Simple remove shift/ctrl/alt
+                //Simple remove shift/ctrl/alt/fn
                 if (shift) {
                     shift = false
                     shiftLock = false
@@ -112,15 +124,25 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     altLock = false
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
                 }
+                if (fn) {
+                    fn = false
+                    fnLock = false
+                }
                 // reset dev page on state change
                 isDevPage = false
                 setInputView(onCreateInputView())
                 controlKeyUpdateView()
                 shiftKeyUpdateView()
                 altKeyUpdateView()
+                fnKeyUpdateView()
             }
             17 -> {
                 //KEYCODE_CTRL_LEFT:
+                if (modifierLongPressFired == 17) {
+                    modifierLongPressFired = 0
+                    controlKeyUpdateView()
+                    return
+                }
                 if (!ctrlLock && !ctrl) {
                     ctrl = true
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
@@ -132,6 +154,11 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
             }
             -30 -> {
                 // KEYCODE_ALT_LEFT (use -30 to avoid colliding with '9' = 57)
+                if (modifierLongPressFired == -30) {
+                    modifierLongPressFired = 0
+                    altKeyUpdateView()
+                    return
+                }
                 if (!altLock && !alt) {
                     alt = true
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT))
@@ -141,8 +168,28 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 }
                 altKeyUpdateView()
             }
+            -31 -> {
+                // Fn key: local-only modifier, nothing sent to the app.
+                // Arm it on the dev page, swipe to the clean numbers, tap a digit -> F-key.
+                if (modifierLongPressFired == -31) {
+                    modifierLongPressFired = 0
+                    fnKeyUpdateView()
+                    return
+                }
+                if (!fnLock && !fn) {
+                    fn = true
+                } else if (!fnLock && fn) {
+                    fn = false
+                }
+                fnKeyUpdateView()
+            }
             16 -> {
                 //KEYCODE_SHIFT_LEFT
+                if (modifierLongPressFired == 16) {
+                    modifierLongPressFired = 0
+                    shiftKeyUpdateView()
+                    return
+                }
                 if (!shiftLock && !shift) {
                     shift = true
                     ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT))
@@ -177,6 +224,35 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                         alt = false
                         ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
                         altKeyUpdateView()
+                    }
+                }
+                // Fn armed: digits become F-keys (F1-F10). Anything else disarms Fn.
+                if (fn) {
+                    val fKe = when (primaryCode) {
+                        '1'.code -> KeyEvent.KEYCODE_F1
+                        '2'.code -> KeyEvent.KEYCODE_F2
+                        '3'.code -> KeyEvent.KEYCODE_F3
+                        '4'.code -> KeyEvent.KEYCODE_F4
+                        '5'.code -> KeyEvent.KEYCODE_F5
+                        '6'.code -> KeyEvent.KEYCODE_F6
+                        '7'.code -> KeyEvent.KEYCODE_F7
+                        '8'.code -> KeyEvent.KEYCODE_F8
+                        '9'.code -> KeyEvent.KEYCODE_F9
+                        '0'.code -> KeyEvent.KEYCODE_F10
+                        else -> 0
+                    }
+                    if (fKe != 0) {
+                        Log.d(javaClass.simpleName, "onKey: fn F-key $fKe")
+                        ic.sendKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, fKe, 0, meta))
+                        ic.sendKeyEvent(KeyEvent(0, 0, KeyEvent.ACTION_UP, fKe, 0, meta))
+                        if (!fnLock) {
+                            fn = false
+                            fnKeyUpdateView()
+                        }
+                        return
+                    } else if (!fnLock) {
+                        fn = false
+                        fnKeyUpdateView()
                     }
                 }
                 //Now shift/ctrl metadata is set
@@ -250,6 +326,13 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
     }
 
     override fun onPress(primaryCode: Int) {
+        // Snapshot armed modifiers on every DOWN, before onKey's else-branch can
+        // consume them. Cheap and unconditional; restore uses it at swipe-steal.
+        downSnapShift = shift
+        downSnapCtrl = ctrl
+        downSnapAlt = alt
+        downSnapFn = fn
+        downSnapTime = android.os.SystemClock.uptimeMillis()
         if (soundOn) {
             val keypressSoundPlayer = MediaPlayer.create(this, R.raw.keypress_sound)
             keypressSoundPlayer?.start()
@@ -326,6 +409,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         val ic = currentInputConnection ?: return
         if (keyCode == 16) {
             shiftLock = !shiftLock
+            modifierLongPressFired = 16
             if (shiftLock) {
                 shift = true
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT))
@@ -338,6 +422,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
 
         if (keyCode == 17) {
             ctrlLock = !ctrlLock
+            modifierLongPressFired = 17
             if (ctrlLock) {
                 ctrl = true
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
@@ -350,6 +435,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
 
         if (keyCode == -30) {
             altLock = !altLock
+            modifierLongPressFired = -30
             if (altLock) {
                 alt = true
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT))
@@ -358,6 +444,13 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
             }
             altKeyUpdateView()
+        }
+
+        if (keyCode == -31) {
+            fnLock = !fnLock
+            modifierLongPressFired = -31
+            fn = fnLock
+            fnKeyUpdateView()
         }
 
         if (keyCode == 32) {
@@ -438,8 +531,9 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 .setRowGap(0.008f)
                 .setKeyGap(0.008f)
 
-            // Clean GBoard: hide top dev row on normal page; dev keys are on swipe page instead
-            val showTopRow = !(mKeyboardState == R.integer.keyboard_normal && !isDevPage)
+            // Top action row only for sym/clipboard states; normal clean page and
+            // dev page build their own rows (dev page would otherwise duplicate Esc/Tab)
+            val showTopRow = (mKeyboardState != R.integer.keyboard_normal)
             if (showTopRow) {
                 if (mToprow) {
                     definitions.addCopyPasteRow(builder)
@@ -522,6 +616,9 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                         switchKeyboardPage(false)
                     }
                 }
+                view.onSwipeSteal = {
+                    restoreModifiersAfterSteal()
+                }
             }
             return mCurrentKeyboardLayoutView
 
@@ -540,24 +637,85 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
 
     override fun onStartInputView(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(attribute, restarting)
+        if (!restarting) {
+            // Fresh input field: drop a stale armed Fn rather than leaking it across apps.
+            fn = false
+            fnLock = false
+            modifierLongPressFired = 0
+        }
         setInputView(onCreateInputView())
+        fnKeyUpdateView()
         sEditorInfo = attribute
     }
 
     fun controlKeyUpdateView() {
+        mCurrentKeyboardLayoutView?.setModifierActive(17, ctrl)
         mCurrentKeyboardLayoutView?.applyCtrlModifier(ctrl)
     }
 
     fun shiftKeyUpdateView() {
+        mCurrentKeyboardLayoutView?.setModifierActive(16, shift)
         mCurrentKeyboardLayoutView?.applyShiftModifier(shift)
     }
 
     fun altKeyUpdateView() {
+        mCurrentKeyboardLayoutView?.setModifierActive(-30, alt)
         // Alt has no visual label swap yet, but keep for future
         mCurrentKeyboardLayoutView?.applyCtrlModifier(ctrl)
     }
 
+    fun fnKeyUpdateView() {
+        mCurrentKeyboardLayoutView?.setModifierActive(-31, fn)
+        mCurrentKeyboardLayoutView?.applyFnModifier(fn)
+    }
+
     fun isOnDevPage(): Boolean = isDevPage
+
+    private fun restoreModifiersAfterSteal() {
+        // A swipe starting on a non-modifier key fires that key's DOWN via the
+        // onKey else-branch, which consumes armed momentary shift/ctrl/alt
+        // (sends ACTION_UP, clears flags) and disarms fn. Re-arm anything that
+        // flipped armed->disarmed since the DOWN snapshot so the page switch
+        // that follows does not land with dead modifiers.
+        // Accepted limitation: the stray keypress/text the stolen DOWN may have
+        // sent is NOT undone; only modifier survival is fixed.
+        try {
+            val now = android.os.SystemClock.uptimeMillis()
+            if (now - downSnapTime > 1500) return // stale (e.g. slow hold then swipe)
+            val ic = currentInputConnection ?: return
+            // DOWN on a modifier/SYM uses the deferred path (no consumption), so
+            // snapshot == current and each check below no-ops harmlessly.
+            if (downSnapShift && !shift) {
+                shift = true
+                try {
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT))
+                } catch (_: Exception) {
+                }
+            }
+            if (downSnapCtrl && !ctrl) {
+                ctrl = true
+                try {
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT))
+                } catch (_: Exception) {
+                }
+            }
+            if (downSnapAlt && !alt) {
+                alt = true
+                try {
+                    ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT))
+                } catch (_: Exception) {
+                }
+            }
+            if (downSnapFn && !fn) {
+                fn = true // local-only, no app event
+            }
+            controlKeyUpdateView()
+            shiftKeyUpdateView()
+            altKeyUpdateView()
+            fnKeyUpdateView()
+        } catch (_: Exception) {
+        }
+    }
 
     private fun switchKeyboardPage(toDevPage: Boolean) {
         try {
@@ -572,32 +730,10 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
             } catch (_: Exception) {
             }
             clearLongPressTimer()
-            // Release momentary modifiers so they can't stick across the rebuild.
-            try {
-                val ic = currentInputConnection
-                if (shift && !shiftLock) {
-                    shift = false
-                    try {
-                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT))
-                    } catch (_: Exception) {
-                    }
-                }
-                if (ctrl && !ctrlLock) {
-                    ctrl = false
-                    try {
-                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT))
-                    } catch (_: Exception) {
-                    }
-                }
-                if (alt && !altLock) {
-                    alt = false
-                    try {
-                        ic?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT))
-                    } catch (_: Exception) {
-                    }
-                }
-            } catch (_: Exception) {
-            }
+            modifierLongPressFired = 0
+            // Preserve armed modifiers (shift/ctrl/alt/fn) across the rebuild so a
+            // swipe never kills active state. Stuck keys are already handled by
+            // releaseAllPressed above; the refresh block below re-applies visuals.
             isDevPage = toDevPage
             val rebuild = {
                 try {
@@ -610,6 +746,7 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                     controlKeyUpdateView()
                     shiftKeyUpdateView()
                     altKeyUpdateView()
+                    fnKeyUpdateView()
                 } catch (_: Exception) {
                 }
             }

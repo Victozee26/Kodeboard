@@ -143,6 +143,11 @@ class KeyboardLayoutBuilder(private val context: Context) {
         return this
     }
 
+    fun onFnShow(label: String): KeyboardLayoutBuilder {
+        currentKey!!.onFnLabel = label
+        return this
+    }
+
     fun onShiftUppercase(): KeyboardLayoutBuilder {
         return onShiftShow(currentKey!!.label!!.uppercase())
     }

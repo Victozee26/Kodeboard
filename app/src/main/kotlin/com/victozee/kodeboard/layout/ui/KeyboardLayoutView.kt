@@ -11,6 +11,10 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
 
     var onSwipeLeft: (() -> Unit)? = null
     var onSwipeRight: (() -> Unit)? = null
+    // Fired exactly once per gesture at the swipe-steal moment (MOVE intercept
+    // where isScrolling flips true). Never fired on normal UP/tap paths and
+    // never from generic releaseAllPressed (which also runs on detach).
+    var onSwipeSteal: (() -> Unit)? = null
 
     private var downX = 0f
     private var downY = 0f
@@ -35,6 +39,7 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
                     // Parent steals the gesture: child that got ACTION_DOWN will only
                     // get ACTION_CANCEL, so release it now to avoid stuck pressed state.
                     releaseAllPressed()
+                    onSwipeSteal?.invoke()
                     return true
                 }
             }
@@ -93,6 +98,20 @@ class KeyboardLayoutView(context: Context, private val uiTheme: UiTheme) : ViewG
     fun applyCtrlModifier(ctrlPressed: Boolean) {
         for (button in getKeyboardButtons()) {
             button.applyCtrlModifier(ctrlPressed)
+        }
+    }
+
+    fun applyFnModifier(fnArmed: Boolean) {
+        for (button in getKeyboardButtons()) {
+            button.applyFnModifier(fnArmed)
+        }
+    }
+
+    fun setModifierActive(code: Int, active: Boolean) {
+        if (active) {
+            uiTheme.activeCodes.add(code)
+        } else {
+            uiTheme.activeCodes.remove(code)
         }
     }
 

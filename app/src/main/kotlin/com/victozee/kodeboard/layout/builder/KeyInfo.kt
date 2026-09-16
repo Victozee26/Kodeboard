@@ -47,6 +47,11 @@ class KeyInfo {
     var onCtrlLabel: String? = null
 
     /**
+     * When fn modifier is armed, show this label instead
+     */
+    var onFnLabel: String? = null
+
+    /**
      * Drawable is shown on the keyboard
      */
     var icon: Drawable? = null

@@ -108,65 +108,50 @@ class Definitions(private val context: Context) {
         @JvmStatic
         fun addGboardNumbersRow(keyboard: KeyboardLayoutBuilder) {
             keyboard.newRow()
-                .addKey('1').withSize(1f)
-                .addKey('2').withSize(1f)
-                .addKey('3').withSize(1f)
-                .addKey('4').withSize(1f)
-                .addKey('5').withSize(1f)
-                .addKey('6').withSize(1f)
-                .addKey('7').withSize(1f)
-                .addKey('8').withSize(1f)
-                .addKey('9').withSize(1f)
-                .addKey('0').withSize(1f)
+                .addKey('1').onFnShow("F1").withSize(1f)
+                .addKey('2').onFnShow("F2").withSize(1f)
+                .addKey('3').onFnShow("F3").withSize(1f)
+                .addKey('4').onFnShow("F4").withSize(1f)
+                .addKey('5').onFnShow("F5").withSize(1f)
+                .addKey('6').onFnShow("F6").withSize(1f)
+                .addKey('7').onFnShow("F7").withSize(1f)
+                .addKey('8').onFnShow("F8").withSize(1f)
+                .addKey('9').onFnShow("F9").withSize(1f)
+                .addKey('0').onFnShow("F10").withSize(1f)
         }
 
         @JvmStatic
         fun addDevSpecialPage(keyboard: KeyboardLayoutBuilder, context: Context) {
-            // Page 2 - shown on swipe left: only special / dev keys, no letters/numbers
-            // Row 1: Esc Tab Home End PgUp Del  (navigation)
+            // Page 2 - shown on swipe left: only special / dev keys, no letters/numbers.
+            // 4 rows (taller keys than the 5-row clean page) grouped by function,
+            // no duplicates: one Esc/Tab/Ctrl/Alt/Shift, no clean bottom row, one Enter.
+            // F1-F10 come from the Fn key: arm F, swipe right, tap a digit.
+            // Row 1: Esc Tab Home End (wide, no more clipped labels)
             keyboard.newRow()
                 .addKey("Esc", -2).withSize(1f)
                 .addKey("Tab", 9).withSize(1f)
                 .addKey("Home", -18).withSize(1f)
                 .addKey("End", -19).withSize(1f)
+            // Row 2: PgUp PgDn Del backspace (wide)
+            keyboard.newRow()
                 .addKey("PgUp", -22).withSize(1f)
-                .addKey(context.getDrawable(R.drawable.ic_backspace_24dp), -5).asRepeatable().withSize(1f)
-            // Row 2: Ctrl Alt arrows PgDn
+                .addKey("PgDn", -23).withSize(1f)
+                .addKey("Del", -21).withSize(1f)
+                .addBackspaceKey()
+            // Row 3: modifiers + Fn + Insert + Enter
             keyboard.newRow()
                 .addKey("Ctrl", 17).asModifier().onCtrlShow("CTRL").withSize(1f)
                 .addKey("Alt", -30).asModifier().withSize(1f)
+                .addShiftKey()
+                .addKey("F", -31).asModifier().withSize(1f)
+                .addKey("Ins", -20).withSize(1f)
+                .addEnterKey()
+            // Row 4: arrow cluster, full-width cursor keys
+            keyboard.newRow()
                 .addKey(context.getDrawable(R.drawable.ic_keyboard_arrow_left_24dp), 5000).asRepeatable().withSize(1f)
-                .addKey(context.getDrawable(R.drawable.ic_keyboard_arrow_down_24dp), 5001).asRepeatable().withSize(1f)
                 .addKey(context.getDrawable(R.drawable.ic_keyboard_arrow_up_24dp), 5002).asRepeatable().withSize(1f)
+                .addKey(context.getDrawable(R.drawable.ic_keyboard_arrow_down_24dp), 5001).asRepeatable().withSize(1f)
                 .addKey(context.getDrawable(R.drawable.ic_keyboard_arrow_right_24dp), 5003).asRepeatable().withSize(1f)
-                .addKey("PgDn", -23).withSize(1f)
-            // Row 3: Shift F1-F6
-            keyboard.newRow()
-                .addKey("Shft", 16).asModifier().onShiftShow("SHFT").withSize(1.2f)
-                .addKey("F1", -6).withSize(1f)
-                .addKey("F2", -7).withSize(1f)
-                .addKey("F3", -8).withSize(1f)
-                .addKey("F4", -9).withSize(1f)
-                .addKey("F5", -10).withSize(1f)
-                .addKey("F6", -11).withSize(1f)
-                .addKey("Del", -21).withSize(1f)
-            // Row 4: F7-F12 + Enter
-            keyboard.newRow()
-                .addKey("Ctrl", 17).asModifier().onCtrlShow("CTRL").withSize(1.2f)
-                .addKey("F7", -12).withSize(1f)
-                .addKey("F8", -13).withSize(1f)
-                .addKey("F9", -14).withSize(1f)
-                .addKey("F10", -15).withSize(1f)
-                .addKey("F11", -16).withSize(1f)
-                .addKey("F12", -17).withSize(1f)
-                .addKey(context.getDrawable(R.drawable.ic_keyboard_return_24dp), -4).withSize(1.2f)
-            // Row 5: bottom - keep space/enter for usability, but only specials
-            keyboard.newRow()
-                .addKey("SYM", -1).onCtrlShow("CLIP").withSize(1f)
-                .addKey(",", ','.code).withSize(1f)
-                .addKey(context.getDrawable(R.drawable.ic_space_bar_24dp), 32).withSize(3f)
-                .addKey(".", '.'.code).withSize(1f)
-                .addKey(context.getDrawable(R.drawable.ic_keyboard_return_24dp), -4).withSize(1f)
         }
 
         @JvmStatic

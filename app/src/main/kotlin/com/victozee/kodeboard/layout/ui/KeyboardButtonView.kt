@@ -24,6 +24,12 @@ class KeyboardButtonView(
     private var timer: Timer? = null
     private var currentLabel: String? = null
     private var isPressed: Boolean = false
+    // True when DOWN was on a modifier/SYM key whose toggle is deferred to UP.
+    // Lets a swipe starting on such a key cancel without toggling.
+    private var downIsTapAction: Boolean = false
+
+    private fun isDeferredTapKey(): Boolean =
+        key.info.isModifier || key.info.code == -1
 
     init {
         currentLabel = key.info.label
@@ -33,7 +39,13 @@ class KeyboardButtonView(
     override fun onTouchEvent(e: MotionEvent): Boolean {
         when (e.action) {
             MotionEvent.ACTION_DOWN -> onPress()
-            MotionEvent.ACTION_UP -> onRelease()
+            MotionEvent.ACTION_UP -> {
+                if (downIsTapAction) {
+                    downIsTapAction = false
+                    submitKeyEvent()
+                }
+                onRelease()
+            }
             MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> releaseIfPressed()
         }
         return true
@@ -122,11 +134,11 @@ class KeyboardButtonView(
         val top = padV
         val right = width - padH
         val bottom = height - padV
-        // GBoard: letters rounded-rect, wide keys full pill
-        val isWide = width > height * 1.5f
+        // GBoard: letters rounded-rect, bottom-row keys (?123/space/enter) full pill
+        val isBottomRowKey = key.info.code == -1 || key.info.code == 32 || key.info.code == -4
         val rx: Float
         val ry: Float
-        if (isWide) {
+        if (isBottomRowKey && width > height) {
             // full pill for space/?123/enter
             rx = (bottom - top) / 2f * 0.9f
             ry = rx
@@ -146,6 +158,13 @@ class KeyboardButtonView(
     private fun onPress() {
         isPressed = true
         inputService.onPress(key.info.code)
+        if (isDeferredTapKey()) {
+            // Modifier/SYM: press feedback only (visuals + sound/vibrate/long-press
+            // timer via onPress above). Toggle fires on genuine UP in onTouchEvent.
+            downIsTapAction = true
+            animatePress()
+            return
+        }
         if (key.info.isRepeatable) {
             startRepeating()
         }
@@ -174,6 +193,9 @@ class KeyboardButtonView(
     fun releaseIfPressed() {
         val wasPressed = isPressed
         isPressed = false
+        // Swipe-cancelled or otherwise released without UP: drop the deferred
+        // toggle, visual reset only, never submit.
+        downIsTapAction = false
         try {
             timer?.cancel()
         } catch (_: Exception) {
@@ -241,6 +263,8 @@ class KeyboardButtonView(
             val nextLabel = if (shiftPressed) onShiftLabel else key.info.label
             setCurrentLabel(nextLabel)
         }
+        // background may have changed (armed highlight) even when the label didn't
+        invalidate()
     }
 
     fun applyCtrlModifier(ctrlPressed: Boolean) {
@@ -249,6 +273,16 @@ class KeyboardButtonView(
             val nextLabel = if (ctrlPressed) onCtrlLabel else key.info.label
             setCurrentLabel(nextLabel)
         }
+        invalidate()
+    }
+
+    fun applyFnModifier(fnArmed: Boolean) {
+        val onFnLabel = key.info.onFnLabel
+        if (onFnLabel != null) {
+            val nextLabel = if (fnArmed) onFnLabel else key.info.label
+            setCurrentLabel(nextLabel)
+        }
+        invalidate()
     }
 
     private fun setCurrentLabel(nextLabel: String?) {
