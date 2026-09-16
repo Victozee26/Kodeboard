@@ -99,15 +99,19 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
             53741 -> ic.performContextMenuAction(android.R.id.undo)
             53742 -> ic.performContextMenuAction(android.R.id.redo)
             -1 -> {
-                //SYM
-                if (mKeyboardState == R.integer.keyboard_normal && !ctrl) {
-                    mKeyboardState = R.integer.keyboard_sym
-                } else if (ctrl) {
+                // ?123 key: placeholder for a future special section (TODO: route here).
+                // Plain press is currently a no-op; Ctrl-held + ?123 -> clipboard,
+                // any other non-normal state -> back to normal.
+                val oldState = mKeyboardState
+                val wasDevPage = isDevPage
+                if (ctrl) {
                     mKeyboardState = R.integer.keyboard_clipboard
-                } else {
+                } else if (mKeyboardState != R.integer.keyboard_normal) {
                     mKeyboardState = R.integer.keyboard_normal
+                } else {
+                    // No-op placeholder: stay on the current page (TODO: future section).
                 }
-                // regenerate view
+                // regenerate view only if state/page changed (see below)
                 //Simple remove shift/ctrl/alt/fn
                 if (shift) {
                     shift = false
@@ -130,7 +134,12 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 }
                 // reset dev page on state change
                 isDevPage = false
-                setInputView(onCreateInputView())
+                // Rebuild only when something visible changed; a plain ?123 press is
+                // a no-op placeholder and must not flicker. Modifier views are still
+                // refreshed below since armed modifiers were just cleared.
+                if (mKeyboardState != oldState || wasDevPage) {
+                    setInputView(onCreateInputView())
+                }
                 controlKeyUpdateView()
                 shiftKeyUpdateView()
                 altKeyUpdateView()
@@ -515,10 +524,6 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
         val mToprow = sharedPreferences.getTopRowActions()
         val mCustomSymbolsMain = sharedPreferences.getCustomSymbolsMain()
         val mCustomSymbolsMain2 = sharedPreferences.getCustomSymbolsMain2()
-        val mCustomSymbolsSym = sharedPreferences.getCustomSymbolsSym()
-        val mCustomSymbolsSym2 = sharedPreferences.getCustomSymbolsSym2()
-        val mCustomSymbolsSym3 = sharedPreferences.getCustomSymbolsSym3()
-        val mCustomSymbolsSym4 = sharedPreferences.getCustomSymbolsSym4()
         val mCustomSymbolsMainBottom = sharedPreferences.getCustomSymbolsMainBottom()
         val mLayout = sharedPreferences.getLayoutIndex()
 
@@ -531,7 +536,14 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 .setRowGap(0.008f)
                 .setKeyGap(0.008f)
 
-            // Top action row only for sym/clipboard states; normal clean page and
+            // Defensive: keyboard_sym is retired and unreachable (?123 is a no-op
+            // placeholder). A stale sym state falls back to normal so the builder
+            // below always has rows (no empty-builder/division-by-zero risk).
+            if (mKeyboardState == R.integer.keyboard_sym) {
+                mKeyboardState = R.integer.keyboard_normal
+            }
+
+            // Top action row only for the clipboard state; normal clean page and
             // dev page build their own rows (dev page would otherwise duplicate Esc/Tab)
             val showTopRow = (mKeyboardState != R.integer.keyboard_normal)
             if (showTopRow) {
@@ -542,31 +554,13 @@ class CodeBoardIME : InputMethodService(), KeyboardView.OnKeyboardActionListener
                 }
             }
 
-            if (mKeyboardState == R.integer.keyboard_sym) {
-                if (mCustomSymbolsSym.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsSym)
-                }
-                if (mCustomSymbolsSym2.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsSym2)
-                }
-                if (mCustomSymbolsSym3.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsSym3)
-                }
-                if (mCustomSymbolsSym4.isNotEmpty()) {
-                    Definitions.addCustomRow(builder, mCustomSymbolsSym4)
-                }
-                if (mCustomSymbolsSym3.isEmpty() && mCustomSymbolsSym4.isEmpty()) {
-                    definitions.addSymbolRows(builder)
-                } else {
-                    definitions.addCustomSpaceRow(builder, mCustomSymbolsMainBottom)
-                }
-            } else if (mKeyboardState == R.integer.keyboard_normal) {
+            if (mKeyboardState == R.integer.keyboard_normal) {
                 if (isDevPage) {
                     // Swipe left: show ONLY dev/special keys, no letters/numbers
                     Definitions.addDevSpecialPage(builder, this)
                 } else {
-                    // Clean GBoard-like default: ALWAYS numbers + letters + clean bottom
-                    // Custom mains are hidden here on purpose for clean look (still on SYM page)
+                    // Clean GBoard-like default: ALWAYS numbers + letters + clean bottom.
+                    // Custom mains stay hidden here on purpose for the clean look.
                     Definitions.addGboardNumbersRow(builder)
                     when (mLayout) {
                         1 -> Definitions.addAzertyRows(builder)

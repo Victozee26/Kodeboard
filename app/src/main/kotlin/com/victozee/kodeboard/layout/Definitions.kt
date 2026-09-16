@@ -32,34 +32,6 @@ class Definitions(private val context: Context) {
             .addKey("SYM", CODE_SYMBOLS).onCtrlShow("CLIP")
     }
 
-    fun addSymbolRows(keyboard: KeyboardLayoutBuilder) {
-        keyboard.newRow()
-            .addKey("Home", -18)
-            .addKey("End", -19)
-            .addKey("Del", -21)
-            .addKey("PgUp", -22)
-            .addKey("PgDn", -23)
-            .newRow()
-            .addShiftKey()
-            .addKey("F1", -6)
-            .addKey("F2", -7)
-            .addKey("F3", -8)
-            .addKey("F4", -9)
-            .addKey("F5", -10)
-            .addKey("F6", -11)
-            .addKey("F7", -12)
-            .addBackspaceKey()
-            .newRow()
-            .addKey("Ctrl", 17).asModifier().onCtrlShow("CTRL")
-            .addKey("F8", -13)
-            .addKey("F9", -14)
-            .addKey("F10", -15)
-            .addKey(context.getDrawable(R.drawable.ic_space_bar_24dp), 32).withSize(2f)
-            .addKey("F11", -16)
-            .addKey("F12", -17)
-            .addEnterKey()
-    }
-
     fun addClipboardActions(keyboard: KeyboardLayoutBuilder) {
         keyboard.newRow()
             .addKey(context.getDrawable(R.drawable.ic_select_all_24dp), 53737)
@@ -68,20 +40,6 @@ class Definitions(private val context: Context) {
             .addKey(context.getDrawable(R.drawable.ic_paste_24dp), 53740)
             .addKey(context.getDrawable(R.drawable.ic_undo_24dp), 53741)
             .addKey(context.getDrawable(R.drawable.ic_redo_24dp), 53742)
-    }
-
-    fun addCustomSpaceRow(keyboard: KeyboardLayoutBuilder, symbols: String) {
-        val chars = symbols.toCharArray()
-        keyboard.newRow().addKey("Ctrl", 17).asModifier().onCtrlShow("CTRL")
-        for (i in 0 until (chars.size + 1) / 2) {
-            if (chars.isEmpty()) break
-            keyboard.addKey(chars[i]).withSize(.7f)
-        }
-        keyboard.addKey(context.getDrawable(R.drawable.ic_space_bar_24dp), 32).withSize(2f)
-        for (i in (chars.size + 1) / 2 until chars.size) {
-            keyboard.addKey(chars[i]).withSize(.7f)
-        }
-        keyboard.addEnterKey()
     }
 
     fun addGboardBottomRow(keyboard: KeyboardLayoutBuilder) {

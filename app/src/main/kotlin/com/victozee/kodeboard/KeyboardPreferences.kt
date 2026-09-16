@@ -122,38 +122,6 @@ class KeyboardPreferences(contextWrapper: ContextWrapper) {
         write("input_symbols_main_bottom", symbols)
     }
 
-    fun getCustomSymbolsSym(): String {
-        return read("input_symbols_sym", res.getString(R.string.input_symbols_sym_2)) ?: res.getString(R.string.input_symbols_sym_2)
-    }
-
-    fun setCustomSymbolsSym(symbols: String) {
-        write("input_symbols_sym", symbols)
-    }
-
-    fun getCustomSymbolsSym2(): String {
-        return read("input_symbols_sym_2", res.getString(R.string.input_symbols_sym)) ?: res.getString(R.string.input_symbols_sym)
-    }
-
-    fun getCustomSymbolsSym3(): String {
-        return read("input_symbols_sym_3", res.getString(R.string.input_symbols_sym_3)) ?: res.getString(R.string.input_symbols_sym_3)
-    }
-
-    fun getCustomSymbolsSym4(): String {
-        return read("input_symbols_sym_4", res.getString(R.string.input_symbols_sym_4)) ?: res.getString(R.string.input_symbols_sym_4)
-    }
-
-    fun setCustomSymbolsSym2(symbols: String) {
-        write("input_symbols_sym_2", symbols)
-    }
-
-    fun setCustomSymbolsSym3(symbols: String) {
-        write("input_symbols_sym_3", symbols)
-    }
-
-    fun setCustomSymbolsSym4(symbols: String) {
-        write("input_symbols_sym_4", symbols)
-    }
-
     fun setCustomSymbolsSymBottom(symbols: String) {
         write("input_symbols_sym_bottom", symbols)
     }
